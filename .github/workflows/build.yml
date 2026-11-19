@@ -28,6 +28,8 @@ jobs:
 
       - name: 设置 Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: 注入 Google Maps API Key（可选）
         run: |
