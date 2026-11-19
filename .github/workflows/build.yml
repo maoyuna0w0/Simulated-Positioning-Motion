@@ -2,7 +2,9 @@ name: Build APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       flavor:
@@ -37,31 +39,28 @@ jobs:
             echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" > local.yml
           fi
 
-      - name: 构建 Debug APK
+      - name: 赋予 gradlew 执行权限并自动补全 Wrapper
         run: |
-          # 1. 修复目录嵌套问题（如果存在子文件夹则自动进入）
-          if [ -d "Simulated-Positioning-Motion" ]; then
-            echo "检测到子目录，正在进入..."
-            cd Simulated-Positioning-Motion
-          fi
-          
-          # 2. 赋予 gradlew 执行权限
+          # 确保脚本可执行
           chmod +x gradlew
           
-          # 3. 自动补全可能缺失的 gradle-wrapper.jar
-          echo "正在补全 Gradle Wrapper..."
-          gradle wrapper --gradle-version 9.6.1
-          
-          # 4. 开始编译
+          # 自动生成或更新 Gradle Wrapper 到 9.6.0 版本
+          # 这解决了之前因 AGP 版本过高导致的 "Minimum supported Gradle version is 9.5.0" 错误
+          echo "正在配置 Gradle Wrapper..."
+          gradle wrapper --gradle-version 9.6.0
+
+      - name: 构建 Debug APK
+        run: |
           FLAVOR="${{ github.event.inputs.flavor || 'scoped' }}"
           TASK="assemble$(echo "${FLAVOR^}")Debug"
           echo "开始执行 ./gradlew $TASK"
-          ./gradlew "$TASK" --no-daemon
+          # 添加 --stacktrace 参数，若失败可输出详细堆栈信息，便于排查
+          ./gradlew "$TASK" --no-daemon --stacktrace
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4
         with:
           name: LocationSpoofer-${{ github.event.inputs.flavor || 'scoped' }}-debug
-          # 使用 ** 匹配任意层级目录下的 APK
-          path: "**/app/build/outputs/apk/**/*.apk"
+          # 使用 ** 匹配任意层级目录下的 APK 文件，兼容项目嵌套或多模块结构
+          path: "**/build/outputs/apk/**/*.apk"
           if-no-files-found: error
