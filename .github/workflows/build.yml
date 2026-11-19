@@ -1,0 +1,49 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      flavor:
+        description: '构建变体'
+        required: true
+        default: 'scoped'
+        type: choice
+        options: [ scoped, global ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 设置 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 注入 Google Maps API Key（可选）
+        run: |
+          if [ -n "${{ secrets.GOOGLE_MAPS_API_KEY }}" ]; then
+            echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" > local.yml
+          fi
+
+      - name: 构建 Debug APK
+        run: |
+          FLAVOR="${{ github.event.inputs.flavor || 'scoped' }}"
+          TASK="assemble$(echo "${FLAVOR^}")Debug"
+          ./gradlew "$TASK" --no-daemon
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocationSpoofer-${{ github.event.inputs.flavor || 'scoped' }}-debug
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
