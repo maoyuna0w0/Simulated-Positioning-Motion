@@ -50,7 +50,7 @@ jobs:
           
           # 3. 自动补全可能缺失的 gradle-wrapper.jar
           echo "正在补全 Gradle Wrapper..."
-          gradle wrapper --gradle-version 9.6.0
+          gradle wrapper --gradle-version 9.6.1
           
           # 4. 开始编译
           FLAVOR="${{ github.event.inputs.flavor || 'scoped' }}"
